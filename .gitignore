@@ -1,0 +1,9 @@
+/build/
+
+# git
+
+*.orig
+
+# vim
+
+*.sw[op]
