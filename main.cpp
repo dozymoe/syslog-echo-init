@@ -4,7 +4,6 @@
 #include <string>
 #include <bits/stdc++.h>
 #include <stdlib.h>
-//#include <unistd.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -13,6 +12,7 @@
 #include <netinet/in.h>
 #include <poll.h>
 
+#define ADDRESS "127.0.0.1"
 #define PORT 514
 #define MAXLINE 1024
 
@@ -34,7 +34,7 @@ int syslog_server_init(int port)
     // Filling server information
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(port);
-    inet_pton(AF_INET, "127.0.0.1", &(server_addr.sin_addr));
+    inet_pton(AF_INET, ADDRESS, &(server_addr.sin_addr));
 
     if (bind(sockfd, (const struct sockaddr*)&server_addr, sizeof(server_addr)) < 0)
     {
@@ -58,7 +58,7 @@ void syslog_server_run(int sockfd)
 
     while (is_running)
     {
-        if (poll(&pfd, 1, 200) == 1)
+        if (poll(&pfd, 1, 1000) == 1)
         {
             n = recvfrom(sockfd, (char*)buffer, MAXLINE, MSG_WAITALL,
                     (struct sockaddr *)&client_addr, &len);
@@ -99,11 +99,9 @@ pid_t subprocess_init(const char* argv[])
 
 void signal_handler(int s)
 {
-    is_running = false;
     if (pid)
     {
         kill(pid, s);
-        waitpid(pid, NULL, 0);
     }
 }
 
@@ -128,19 +126,25 @@ int main(int argc, const char* argv[])
     sig_h.sa_flags = 0;
     sigaction(SIGINT, &sig_h, NULL);
     sigaction(SIGTERM, &sig_h, NULL);
+    sigaction(SIGHUP, &sig_h, NULL);
+
+    int ret;
+    int wstatus;
 
     pid = subprocess_init(++argv);
-    if (pid <= 0)
+    if (pid > 0)
     {
-        close(sockfd);
-        return EXIT_FAILURE;
+        waitpid(pid, &wstatus, 0);
+        ret = WEXITSTATUS(wstatus);
     }
-    int wstatus;
-    waitpid(pid, &wstatus, 0);
-    is_running = false;
+    else
+    {
+        ret = EXIT_FAILURE;
+    }
 
+    is_running = false;
     syslog_thread.join();
     pipe_thread.join();
     close(sockfd);
-    return WEXITSTATUS(wstatus);
+    return ret;
 }
