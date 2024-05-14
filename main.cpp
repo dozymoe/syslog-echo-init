@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <mutex>
 #include <string>
@@ -18,7 +19,8 @@
 
 #define ADDRESS "127.0.0.1"
 #define PORT 514
-#define MAXLINE 1024
+// It's 2KB for rsyslog and 64KB for syslog-ng
+#define MAXLINE 2048
 
 int is_running = 1;
 pid_t pid = 0;
@@ -77,16 +79,22 @@ void syslog_server_run(int sockfd)
 
 void pipe_syslog()
 {
-    std::string tmp;
+    long unsigned int len;
+    char buffer[MAXLINE];
+
     while (is_running)
     {
         while (!queue.empty())
         {
             queue_lock.lock();
-            tmp = queue.pop();
+
+            len = std::min(queue.front().size(), (long unsigned int)MAXLINE - 1);
+            queue.pop().copy(buffer, len);
+            buffer[len] = 0;
+
             queue_lock.unlock();
 
-            std::cout << tmp << std::endl;
+            std::cout << buffer << std::endl;
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }

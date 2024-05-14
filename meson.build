@@ -6,5 +6,5 @@ executable('supervisor-echo-init',
            'main.cpp',
            # comment this line if you want smaller binary (no static linking)
            # 2.5MB with static linking, 220KB without
-           #link_args : ['-static'],
+           link_args : ['-static'],
            install : true)
