@@ -1,7 +1,8 @@
-#include <deque>
 #include <chrono>
-#include <thread>
+#include <mutex>
 #include <string>
+#include <thread>
+//-
 #include <bits/stdc++.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -11,6 +12,9 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <poll.h>
+//-
+#include "cqueue.hpp"
+
 
 #define ADDRESS "127.0.0.1"
 #define PORT 514
@@ -18,7 +22,8 @@
 
 int is_running = 1;
 pid_t pid = 0;
-std::deque<std::string> queue;
+gto::cqueue<std::string> queue;
+std::mutex queue_lock;
 
 int syslog_server_init(int port)
 {
@@ -63,18 +68,25 @@ void syslog_server_run(int sockfd)
             n = recvfrom(sockfd, (char*)buffer, MAXLINE, MSG_WAITALL,
                     (struct sockaddr *)&client_addr, &len);
             buffer[n] = 0;
-            queue.push_back(std::string(buffer));
+            queue_lock.lock();
+            queue.push(buffer);
+            queue_lock.unlock();
         }
     }
 }
 
 void pipe_syslog()
 {
+    std::string tmp;
     while (is_running)
     {
-        for (; !queue.empty(); queue.pop_front())
+        while (!queue.empty())
         {
-            std::cout << queue.front() << std::endl;
+            queue_lock.lock();
+            tmp = queue.pop();
+            queue_lock.unlock();
+
+            std::cout << tmp << std::endl;
         }
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
