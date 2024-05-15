@@ -30,3 +30,11 @@ Third Party Libraries
 ---------------------
 
 * cqueue (https://github.com/torrentg/cqueue) which was licensed under LGPL v3
+
+
+Troubleshoot
+------------
+
+* If you run into segfault error, it's probably because libc was statically linked
+  and it's not compatible with the system you were running it on, try building the
+  project in the same system.
